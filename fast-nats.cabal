@@ -1,0 +1,21 @@
+name:                fast-nats
+version:             0.1.0.0
+synopsis:            Natural Numbers with little overhead
+description:         Singleton like natural numbers without the
+                     singleton dep and with a machine integer
+                     internal rep.
+license:             MIT
+license-file:        LICENSE
+author:              Kyle McKean
+maintainer:          mckean.kylej@gmail.com
+category:            Data
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+library
+  exposed-modules:     Data.Nat
+                     , Data.Fin
+  build-depends:       base >=4.9 && <4.10
+  hs-source-dirs:      src
+  default-language:    Haskell2010
