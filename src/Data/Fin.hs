@@ -1,32 +1,38 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-module Data.Fin where
+module Data.Fin (Fin
+                ,finToInt
+                ,natToFin
+                ,finToNat
+                ,finZAbsurd
+                ,finZElim
+                ,zero
+                ,succ
+                ,weaken
+                ,weakenN
+                ,strengthen
+                ,shift
+                ,last) where
 
+import Prelude hiding (succ,last)
 import Data.Kind (type Type)
 import Data.Void (Void,absurd)
 
-import Data.Nat (type Nat(..),SNat)
+import Data.Nat.Internal
 import qualified Data.Nat as N
-
-newtype Fin (a :: Nat) = Fin Int
-
-instance Show (Fin n) where
-  show = show . toInt
-
-toInt :: Fin n -> Int
-toInt (Fin n) = n
 
 natToFin :: SNat n -> SNat m -> Maybe (Fin m)
 natToFin x bound
-  | i < N.toInt bound = Just (Fin i)
+  | i < natToInt bound = Just (Fin i)
   | otherwise = Nothing
-  where i = N.toInt x
+  where i = natToInt x
 
-finToNat :: Fin n -> SNat n
-finToNat (Fin x) = SNat x
+finToNat :: (IsNat n) => Fin n -> SNat n
+finToNat _ = witness
 
 finZAbsurd :: Fin 'Z -> Void
 finZAbsurd = finZAbsurd
@@ -46,10 +52,13 @@ weaken (Fin x) = Fin x
 weakenN :: SNat n -> Fin m -> Fin (n N.+ m)
 weakenN _ (Fin x) = Fin x
 
-strengthen :: SNat n -> Fin (S n) -> Maybe (Fin n)
-strengthen bound (Fin x)
-  | x <= N.toInt bound = Just (Fin x)
-  | otherwise          = Nothing
+strengthen :: forall n. (IsNat n) => Fin (S n) -> Maybe (Fin n)
+strengthen (Fin x)
+  | x < natToInt (witness :: SNat n) = Just (Fin x)
+  | otherwise = Nothing
 
 shift :: SNat n -> Fin m -> Fin (n N.+ m)
-shift n (Fin x) = Fin (x + N.toInt n)
+shift n (Fin x) = Fin (x + natToInt n)
+
+last :: forall n. (IsNat n) => Fin ('S n)
+last = Fin (natToInt (witness :: SNat n))

@@ -10,12 +10,12 @@ author:              Kyle McKean
 maintainer:          mckean.kylej@gmail.com
 category:            Data
 build-type:          Simple
-extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.Nat
                      , Data.Fin
+  other-modules:       Data.Nat.Internal
   build-depends:       base >=4.9 && <4.10
   hs-source-dirs:      src
   default-language:    Haskell2010

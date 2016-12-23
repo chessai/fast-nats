@@ -7,40 +7,47 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wall -Werror #-}
-module Data.Nat where
+module Data.Nat (
+  Nat,
+  natToInt,
+  type FromKnownNat,
+  fromKnownNat,
+  zero,
+  succ,
+  isZero,
+  notZero,
+  type (+),
+  plus,
+  type Pred,
+  pred,
+  type (-),
+  monus,
+  type (*),
+  times,
+  type (^),
+  power,
+  type Min,
+  minimum,
+  type Max,
+  maximum,
+  type Cmp,
+  Compare(..),
+  cmp )where
 
-import Prelude hiding (minimum,maximum,pred)
+import Prelude hiding (minimum,maximum,succ,pred)
 import qualified GHC.TypeLits as GHC
 import Data.Kind hiding (type (*))
 import Data.Proxy (Proxy(..))
-import Data.Type.Equality (TestEquality(..),(:~:)(..))
-import Data.Type.Coercion (TestCoercion(..),repr)
 import Unsafe.Coerce (unsafeCoerce)
 
-data Nat = Z | S Nat
-
-newtype SNat (a :: Nat) = SNat Int
-
-toInt :: SNat n -> Int
-toInt (SNat n) = n
-
-instance Show (SNat n) where
-  show = show . toInt
-
-instance TestEquality SNat where
-  testEquality (SNat n) (SNat m)
-    | n == m    = Just (unsafeCoerce Refl)
-    | otherwise = Nothing
-
-instance TestCoercion SNat where
-  testCoercion n m = fmap repr (testEquality n m)
+import Data.Nat.Internal
 
 type family FromKnownNat (a :: GHC.Nat) :: Nat where
   FromKnownNat 0 = 'Z
   FromKnownNat n = 'S (FromKnownNat (n GHC.- 1))
 
-fromKnownNat :: (GHC.KnownNat n) => Proxy n -> SNat (FromKnownNat n)
-fromKnownNat = SNat . fromIntegral . GHC.natVal
+fromKnownNat :: forall proxy n. (GHC.KnownNat n) => proxy n -> SNat (FromKnownNat n)
+fromKnownNat _ = (SNat . fromIntegral . GHC.natVal) (Proxy :: Proxy n)
 
 zero :: SNat 'Z
 zero = SNat 0
