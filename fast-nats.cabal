@@ -1,9 +1,10 @@
 name:                fast-nats
 version:             0.1.0.0
-synopsis:            Natural Numbers with little overhead
-description:         Singleton like natural numbers without the
-                     singleton dep and with a machine integer
-                     internal rep.
+synopsis:            Natural Numbers with no overhead
+description:         Dependent Singleton like natural numbers without the
+                     Singleton dependency. The implementation uses inductive
+                     naturals at the type level but machine integers at the term
+                     level.
 license:             MIT
 license-file:        LICENSE
 author:              Kyle McKean
