@@ -17,6 +17,7 @@ Bug-Reports:         https://github.com/mckeankylej/fast-nats/issues
 library
   exposed-modules:     Data.Nat.Internal
                      , Data.Nat
+                     , Data.Nat.Properties
                      , Data.Fin
   build-depends:       base >=4.9 && <4.10
   hs-source-dirs:      src

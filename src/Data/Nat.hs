@@ -10,6 +10,8 @@ Portability : Portable
 Fast natural numbers, you can learn more about these types from agda and idris\' standard libary.
 -}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -20,6 +22,7 @@ Fast natural numbers, you can learn more about these types from agda and idris\'
 
 {-# OPTIONS_GHC -Wall -Werror #-}
 module Data.Nat (
+  Dec(..),
   type Nat(..),
   SNat,
   IsNat(..),
@@ -54,9 +57,14 @@ module Data.Nat (
 import Prelude hiding (minimum,maximum,succ,pred)
 import qualified GHC.TypeLits as GHC
 import Data.Kind hiding (type (*))
+import Data.Void (Void)
 import Unsafe.Coerce (unsafeCoerce)
 
 import Data.Nat.Internal
+
+data Dec a =
+  Proved a |
+  Refuted (a -> Void)
 
 -- | Transform a GHC.Typelit 'GHC.Nat' into an inductive 'Nat'.
 type family FromKnownNat (a :: GHC.Nat) :: Nat where
@@ -154,28 +162,31 @@ data IsZero :: Nat -> Type where
   SIsZ :: IsZero 'Z
 
 -- | This is a runtime function used to check if a 'Nat' is zero.
-isZero :: SNat n -> Maybe (IsZero n)
+isZero :: SNat n -> Dec (IsZero n)
 isZero (SNat x)
-  | x == 0    = Just (unsafeCoerce SIsZ)
-  | otherwise = Nothing
+  | x == 0    = Proved (unsafeCoerce SIsZ)
+  | otherwise = Refuted (\case{})
 
 -- | Constructive <=
--- if n <= m then exists (k : Nat). n + k = m
+-- n <= m => exists (k : Nat). n + k = m
 data LTE :: Nat -> Nat -> Type where
   SLTE :: SNat y -> LTE (y + x) x
 
 deriving instance Show (LTE n m)
 
 -- | This function should be used at runtime to prove n <= m.
-lte :: SNat n -> SNat m -> Maybe (LTE n m)
+lte :: SNat n -> SNat m -> Dec (LTE n m)
 lte (SNat x) (SNat y)
-  | x <= y    = Just (unsafeCoerce (SLTE (SNat (y - x))))
-  | otherwise = Nothing
+  | x <= y    = Proved (unsafeCoerce (SLTE (SNat (y - x))))
+  | otherwise = Refuted unsafeCoerce
 
 -- | Constructive 'compare'
--- if n < m then exists (k : Nat). n + k + 1 = m
--- if n == m then n = m
--- if n > m then exists (k : Nat). n = m + k + 1
+-- n < m => exists (k : Nat). n + k + 1 = m
+--
+-- n == m => n = m
+--
+-- in > m => exists (k : Nat). n = m + k + 1
+--
 data Compare :: Nat -> Nat -> Type where
   SLT :: SNat y -> Compare x ('S y + x)
   SEQ :: Compare x x
