@@ -16,6 +16,7 @@ Fast natural numbers, you can learn more about these types from agda and idris\'
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -25,8 +26,11 @@ module Data.Nat (
   Dec(..),
   type Nat(..),
   SNat,
-  IsNat(..),
   natToInt,
+  IsNat(..),
+  SomeNat,
+  withNat,
+  fromInt,
   type ToKnownNat,
   type FromKnownNat,
   fromKnownNat,
@@ -49,6 +53,10 @@ module Data.Nat (
   type Cmp,
   IsZero(..),
   isZero,
+  NotZero(..),
+  notZero,
+  View(..),
+  viewNat,
   LTE(..),
   lte,
   Compare(..),
@@ -65,6 +73,14 @@ import Data.Nat.Internal
 data Dec a =
   Proved a |
   Refuted (a -> Void)
+
+newtype SomeNat = SomeNat (forall r. (forall n. SNat n -> r) -> r)
+
+withNat :: SomeNat -> (forall n. SNat n -> r) -> r
+withNat (SomeNat e) cb = e cb
+
+fromInt :: Int -> SomeNat
+fromInt i = SomeNat (\e -> e (SNat i))
 
 -- | Transform a GHC.Typelit 'GHC.Nat' into an inductive 'Nat'.
 type family FromKnownNat (a :: GHC.Nat) :: Nat where
@@ -166,6 +182,24 @@ isZero :: SNat n -> Dec (IsZero n)
 isZero (SNat x)
   | x == 0    = Proved (unsafeCoerce SIsZ)
   | otherwise = Refuted (\case{})
+
+-- | Proof that a number is not zero
+data NotZero :: Nat -> Type where
+  SNotZ :: NotZero ('S n)
+
+-- | This is a runtime function used to check if a 'Nat' is not zero.
+notZero :: SNat n -> Dec (NotZero n)
+notZero (SNat x)
+  | x /= 0    = Proved (unsafeCoerce SNotZ)
+  | otherwise = Refuted (\case{})
+
+data View :: Nat -> Type where
+  Zero :: View 'Z
+  Succ :: SNat n -> View ('S n)
+
+viewNat :: SNat n -> View n
+viewNat (SNat 0) = unsafeCoerce Zero
+viewNat (SNat n) = unsafeCoerce (SNat (n - 1))
 
 -- | Constructive <=
 -- n <= m => exists (k : Nat). n + k = m
