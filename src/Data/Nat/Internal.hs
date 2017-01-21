@@ -1,14 +1,17 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeInType #-}
 
 {-# OPTIONS_HADDOCK hide, not-home #-}
-{-# OPTIONS_GHC -Wall -Werror #-}
+{-# OPTIONS_GHC -Wall -Werror -Wno-unticked-promoted-constructors #-}
 module Data.Nat.Internal where
 
 import qualified GHC.TypeLits as GHC
+import Data.Kind (type Type)
 import Data.Proxy (Proxy(..))
 import Data.Type.Equality (TestEquality(..),(:~:)(..))
 import Data.Type.Coercion (TestCoercion(..),repr)
@@ -45,26 +48,32 @@ instance IsNat 'Z where
   witness = SNat 0
 
 -- | Transform a GHC.Typelit 'GHC.Nat' into an inductive 'Nat'.
-type family ToKnownNat (a :: Nat) :: GHC.Nat where
-  ToKnownNat 'Z = 0
-  ToKnownNat ('S n) = 1 GHC.+ ToKnownNat n
+type family ToLit (a :: Nat) :: GHC.Nat where
+  ToLit 'Z = 0
+  ToLit ('S n) = 1 GHC.+ ToLit n
 
-instance GHC.KnownNat (ToKnownNat ('S n)) => IsNat ('S n) where
-  witness = (SNat . fromIntegral . GHC.natVal) (Proxy :: Proxy (ToKnownNat ('S n)))
+instance GHC.KnownNat (ToLit ('S n)) => IsNat ('S n) where
+  witness = (SNat . fromIntegral . GHC.natVal) (Proxy :: Proxy (ToLit ('S n)))
 
 -- | Finite Sets, this type has an upper bound n and can only contain numbers between ∀x. 0 <= x < n
+--
+-- Like 'Nat' this is only used at the type level.
 --
 -- Fin 1 = { 0 }
 --
 -- Fin 2 = { 0, 1 }
 --
 -- Fin 3 = { 0, 1, 2 }
-newtype Fin (n :: Nat) = Fin Int deriving (Eq,Ord)
+data Fin :: Nat -> Type where
+  FZ :: Fin (S k)
+  FS :: Fin k -> Fin (S k)
+
+-- | Singleton finite sets, this uses a fast 'SNat' under the hood.
+newtype SFin (f :: Fin n) = SFin Int deriving (Eq,Ord)
 
 -- | Get the value out of a 'Fin'. This function has a postcondition that the 'Int' x is 0 <= x < n
+finToInt :: SFin i -> Int
+finToInt (SFin n) = n
 
-finToInt :: Fin n -> Int
-finToInt (Fin n) = n
-
-instance Show (Fin n) where
+instance Show (SFin n) where
   show = show . finToInt

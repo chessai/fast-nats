@@ -19,6 +19,7 @@ Fast natural numbers, you can learn more about these types from agda and idris\'
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 {-# OPTIONS_GHC -Wall -Werror #-}
@@ -31,9 +32,9 @@ module Data.Nat (
   SomeNat,
   withNat,
   fromInt,
-  type ToKnownNat,
-  type FromKnownNat,
-  fromKnownNat,
+  type ToLit,
+  type Lit,
+  slit,
   zero,
   succ,
   type (+),
@@ -79,17 +80,19 @@ newtype SomeNat = SomeNat (forall r. (forall n. SNat n -> r) -> r)
 withNat :: SomeNat -> (forall n. SNat n -> r) -> r
 withNat (SomeNat e) cb = e cb
 
-fromInt :: Int -> SomeNat
-fromInt i = SomeNat (\e -> e (SNat i))
+fromInt :: Int -> Maybe SomeNat
+fromInt i
+  | 0 <= i    = Just (SomeNat (\e -> e (SNat i)))
+  | otherwise = Nothing
 
 -- | Transform a GHC.Typelit 'GHC.Nat' into an inductive 'Nat'.
-type family FromKnownNat (a :: GHC.Nat) :: Nat where
-  FromKnownNat 0 = 'Z
-  FromKnownNat n = 'S (FromKnownNat (n GHC.- 1))
+type family Lit (a :: GHC.Nat) :: Nat where
+  Lit 0 = 'Z
+  Lit n = 'S (Lit (n GHC.- 1))
 
 -- | Generate a 'SNat' from a GHC.Typelit 'GHC.Nat'.
-fromKnownNat :: forall proxy n. IsNat (FromKnownNat n) => proxy n -> SNat (FromKnownNat n)
-fromKnownNat _ = witness
+slit :: forall n. IsNat (Lit n) => SNat (Lit n)
+slit = witness
 
 -- | The smallest 'SNat'.
 zero :: SNat 'Z
@@ -100,6 +103,7 @@ succ :: SNat n -> SNat ('S n)
 succ (SNat x) = SNat (1 + x)
 
 -- | Type level addition of naturals.
+infixl 6 +
 type family (a :: Nat) + (b :: Nat) :: Nat where
   'Z + n = n
   ('S n) + m = 'S (n + m)
@@ -118,6 +122,7 @@ pred (SNat 0) = SNat 0
 pred (SNat n) = SNat (n - 1)
 
 -- | Type level monus. This is not subtraction as natural numbers do not form a group.
+infixl 6 -
 type family (a :: Nat) - (b :: Nat) :: Nat where
   n - 'Z = n
   'Z - m = m
@@ -130,6 +135,7 @@ monus (SNat x) (SNat y)
   | otherwise = SNat 0
 
 -- | Type level multiplication.
+infixl 7 *
 type family (a :: Nat) * (b :: Nat) :: Nat where
   'Z * n = 'Z
   ('S n) * m = m + (n * m)
@@ -138,6 +144,7 @@ times :: SNat a -> SNat b -> SNat (a * b)
 times (SNat x) (SNat y) = SNat (x * y)
 
 -- | Type level exponentiation.
+infixr 8 ^
 type family (a :: Nat) ^ (b :: Nat) :: Nat where
   base ^ 'Z = 'S 'Z
   base ^ 'S n = base * (base ^ n)
@@ -202,7 +209,7 @@ viewNat (SNat 0) = unsafeCoerce Zero
 viewNat (SNat n) = unsafeCoerce (SNat (n - 1))
 
 -- | Constructive <=
--- n <= m => exists (k : Nat). n + k = m
+-- n <= m ⇒ ∃ (k : Nat). n + k = m
 data LTE :: Nat -> Nat -> Type where
   SLTE :: SNat y -> LTE (y + x) x
 
@@ -215,11 +222,11 @@ lte (SNat x) (SNat y)
   | otherwise = Refuted unsafeCoerce
 
 -- | Constructive 'compare'
--- n < m => exists (k : Nat). n + k + 1 = m
+-- n < m ⇒ ∃ (k : Nat). n + k + 1 = m
 --
--- n == m => n = m
+-- n == m ⇒ n = m
 --
--- in > m => exists (k : Nat). n = m + k + 1
+-- in > m ⇒ ∃ (k : Nat). n = m + k + 1
 --
 data Compare :: Nat -> Nat -> Type where
   SLT :: SNat y -> Compare x ('S y + x)
