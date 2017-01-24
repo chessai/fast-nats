@@ -6,87 +6,111 @@ License     : MIT
 Maintainer  : mckean.kylej@gmail.com
 Stability   : experimental
 Portability : Portable
-
 Fast finite sets, you can learn more about these types from agda and idris\' standard libary.
 -}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-module Data.Fin (
-  Fin,
-  finToInt,
-  natToFin,
-  finToNat,
-  finZAbsurd,
-  finZElim,
-  zero,
-  succ,
-  weaken,
-  weakenLTE,
-  weakenN,
-  strengthen,
-  shift,
-  last) where
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeInType #-}
 
-import Prelude hiding (succ,last)
-import Data.Kind (type Type)
-import Data.Void (Void,absurd)
+{-# LANGUAGE TypeApplications #-}
 
+{-# OPTIONS_GHC -Wall -Werror -Wno-unticked-promoted-constructors #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+module Data.Fin where
+
+import Unsafe.Coerce (unsafeCoerce)
+import Data.Singletons.Prelude (Sing(..),SingI(..),SMaybe)
+
+import Data.Nat
 import Data.Nat.Internal
-import qualified Data.Nat as N
 
--- | Given a value and a bound construct a finite set.
-natToFin :: SNat n -> SNat m -> Maybe (Fin m)
-natToFin x bound
-  | i < natToInt bound = Just (Fin i)
-  | otherwise = Nothing
-  where i = natToInt x
+type family NatToFin (n :: Nat) (m :: Nat) :: Maybe (Fin m) where
+  NatToFin Z     (S m) = Just FZ
+  NatToFin (S n) (S m) = Map FS (NatToFin n m)
+  NatToFin n m = Nothing
 
--- | Get the size of the finite set.
-finToNat :: (IsNat n) => Fin n -> SNat n
-finToNat _ = witness
+natToFin :: SNat n -> SNat m -> SMaybe (NatToFin n m)
+natToFin (SNat n) (SNat m)
+  | n < m     = unsafeCoerce (SJust (SFin n))
+  | otherwise = unsafeCoerce SNothing
 
--- | An empty finite set is uninhabited.
-finZAbsurd :: Fin 'Z -> Void
-finZAbsurd = finZAbsurd
+type family FromNat (n :: Nat) :: Fin (S n) where
+  FromNat Z = FZ
+  FromNat (S n) = FS (FromNat n)
 
--- | Construct any value from an empty finite set as it is uninhabited.
-finZElim :: Fin 'Z -> a
-finZElim = absurd . finZAbsurd
+fromNat :: SNat n -> SFin (FromNat n)
+fromNat (SNat i) = SFin i
+
+type family ToNat (i :: Fin n) :: Nat where
+  ToNat FZ = Z
+  ToNat (FS f) = S (ToNat f)
+
+toNat :: SFin f -> SNat (ToNat f)
+toNat (SFin i) = SNat i
+
+type Fin' (i :: Fin n) = Fin (ToNat i)
+
+-- This also seems to be broken
+type family FromLTE (l :: LT n m) :: Fin m where
+  FromLTE (LTESucc LTEZero) = FZ
+  FromLTE (LTESucc (LTESucc n)) = FS (FromLTE (LTESucc n))
+
+fromLTE :: forall n m lte. (SingI n) => SLTE (lte :: LT n m) -> SFin (FromLTE lte)
+fromLTE _ = SFin (toInt (sing :: SNat n))
+
+test = case lte (slit @3) (slit @4) of
+  SJust l -> fromLTE l
 
 -- | The smallest finite set, it only contains 0.
-zero :: Fin ('S n)
-zero = Fin 0
+zero :: SFin FZ
+zero = SFin 0
 
 -- | Increase the value and bound of a finite set by one.
-succ :: Fin n -> Fin ('S n)
-succ (Fin x) = Fin (1 + x)
+succ :: SFin f -> SFin (FS f)
+succ (SFin i) = SFin (1 + i)
 
--- | Increase the bound of a finite set by one.
-weaken :: Fin n -> Fin ('S n)
-weaken (Fin x) = Fin x
+weaken :: SFin f -> SFin (FS f)
+weaken (SFin i) = SFin i
 
--- | Given a proof that n is less than or equal to m weaken a finite set of bound n to bound m.
-weakenLTE :: N.LTE n m -> Fin n -> Fin m
-weakenLTE _ (Fin x) = Fin x
+type family WeakenLTE (lte :: LTE n m) (i :: Fin n) :: Fin m where
+  WeakenLTE (LTESucc lte) FZ = FZ
+  WeakenLTE (LTESucc lte) (FS i) = FS (WeakenLTE lte i)
 
--- | Increase the bound on a finite set by n.
-weakenN :: SNat n -> Fin m -> Fin (n N.+ m)
-weakenN _ (Fin x) = Fin x
+weakenLTE :: SLTE lte -> SFin f -> SFin (WeakenLTE lte f)
+weakenLTE _ (SFin i) = SFin i
 
--- | Attempt to lower a bound on a finite set by one.
-strengthen :: forall n. (IsNat n) => Fin (S n) -> Maybe (Fin n)
-strengthen (Fin x)
-  | x < natToInt (witness :: SNat n) = Just (Fin x)
-  | otherwise = Nothing
+type family WeakenN (n :: Nat) (i :: Fin m) :: (Fin (m + n)) where
+  WeakenN n FZ = FZ
+  WeakenN n (FS i) = FS (WeakenN n i)
 
--- | Increase the value and bound of a finite set by N.
-shift :: SNat n -> Fin m -> Fin (n N.+ m)
-shift n (Fin x) = Fin (x + natToInt n)
+weakenN :: SFin f -> SFin (WeakenN n f)
+weakenN (SFin i) = SFin i
 
--- | Construct the largest value possible in a finite set.
-last :: forall n. (IsNat n) => Fin ('S n)
-last = Fin (natToInt (witness :: SNat n))
+-- This seems to be broke
+type family Strengthen (m :: Nat) (i :: Fin (S m)) :: Maybe (Fin m) where
+  Strengthen (S k) FZ = Just FZ
+  Strengthen (S k) (FS f) = Map FS (Strengthen k f)
+  Strengthen k f = Nothing
+
+strengthen :: forall n f. SingI n => SFin (f :: Fin (S n)) -> SMaybe (Strengthen n f)
+strengthen (SFin i)
+  | i < toInt (sing :: SNat n) = unsafeCoerce (SJust (SFin i))
+  | otherwise                  = unsafeCoerce SNothing
+
+type family Shift (n :: Nat) (i :: Fin m) :: Fin (n + m) where
+  Shift Z f = f
+  Shift (S n) f = FS (Shift n f)
+
+shift :: SNat n -> SFin f -> SFin (Shift n f)
+shift (SNat x) (SFin i) = SFin (x + i)
+
+type family Last (n :: Nat) :: Fin (S n) where
+  Last Z = FZ
+  Last (S n) = FS (Last n)
+
+last :: forall n. (SingI n) => SFin (Last n)
+last = SFin (toInt (sing :: SNat n))
