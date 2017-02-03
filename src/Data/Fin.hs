@@ -16,17 +16,17 @@ Fast finite sets, you can learn more about these types from agda and idris\' sta
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeInType #-}
 
-{-# LANGUAGE TypeApplications #-}
-
 {-# OPTIONS_GHC -Wall -Werror -Wno-unticked-promoted-constructors #-}
-{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Data.Fin where
 
 import Unsafe.Coerce (unsafeCoerce)
-import Data.Singletons.Prelude (Sing(..),SingI(..),SMaybe)
+import Data.Singletons.Prelude (Sing(..),SingI(..),SMaybe,PNum(..))
 
-import Data.Nat
-import Data.Nat.Internal
+import Data.Nat.Internal (Sing(..),type Fin(..))
+import Data.Nat (type Nat(..),type SNat,toInt)
+import Data.LTE
+
+type SFin (f :: Fin n) = Sing f
 
 type family NatToFin (n :: Nat) (m :: Nat) :: Maybe (Fin m) where
   NatToFin Z     (S m) = Just FZ
@@ -55,15 +55,12 @@ toNat (SFin i) = SNat i
 type Fin' (i :: Fin n) = Fin (ToNat i)
 
 -- This also seems to be broken
-type family FromLTE (l :: LT n m) :: Fin m where
+type family FromLTE (l :: LTE n m) :: Fin m where
   FromLTE (LTESucc LTEZero) = FZ
   FromLTE (LTESucc (LTESucc n)) = FS (FromLTE (LTESucc n))
 
-fromLTE :: forall n m lte. (SingI n) => SLTE (lte :: LT n m) -> SFin (FromLTE lte)
+fromLTE :: forall n m lte. (SingI n) => SLTE (lte :: LTE n m) -> SFin (FromLTE lte)
 fromLTE _ = SFin (toInt (sing :: SNat n))
-
-test = case lte (slit @3) (slit @4) of
-  SJust l -> fromLTE l
 
 -- | The smallest finite set, it only contains 0.
 zero :: SFin FZ
@@ -83,7 +80,7 @@ type family WeakenLTE (lte :: LTE n m) (i :: Fin n) :: Fin m where
 weakenLTE :: SLTE lte -> SFin f -> SFin (WeakenLTE lte f)
 weakenLTE _ (SFin i) = SFin i
 
-type family WeakenN (n :: Nat) (i :: Fin m) :: (Fin (m + n)) where
+type family WeakenN (n :: Nat) (i :: Fin m) :: (Fin (m :+ n)) where
   WeakenN n FZ = FZ
   WeakenN n (FS i) = FS (WeakenN n i)
 
@@ -101,7 +98,7 @@ strengthen (SFin i)
   | i < toInt (sing :: SNat n) = unsafeCoerce (SJust (SFin i))
   | otherwise                  = unsafeCoerce SNothing
 
-type family Shift (n :: Nat) (i :: Fin m) :: Fin (n + m) where
+type family Shift (n :: Nat) (i :: Fin m) :: Fin (n :+ m) where
   Shift Z f = f
   Shift (S n) f = FS (Shift n f)
 

@@ -1,5 +1,5 @@
 name:                fast-nats
-version:             0.1.0.1
+version:             0.2.0.0
 synopsis:            Natural Numbers with no overhead
 description:         Dependent Singleton natural numbers. The implementation uses
                      inductive naturals at the type level but machine integers at
@@ -14,10 +14,11 @@ cabal-version:       >=1.10
 Bug-Reports:         https://github.com/mckeankylej/fast-nats/issues
              
 library
-  exposed-modules:     Data.Promotion.Type.Equality
-                     , Data.Nat.Internal
+  exposed-modules:     Data.Viewable
+                       Data.Nat.Internal
                      , Data.Nat
                      , Data.Nat.Properties
+                     , Data.LTE
                      , Data.Fin
   build-depends:       base >=4.9 && <4.10
                      , singletons >= 2.2 && < 2.3

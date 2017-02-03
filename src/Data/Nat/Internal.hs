@@ -9,7 +9,6 @@
 
 {-# OPTIONS_GHC -Wall -Werror -Wno-unticked-promoted-constructors #-}
 module Data.Nat.Internal where
-
 import Data.Word (Word)
 import qualified GHC.TypeLits as GHC
 import Data.Kind (type Type)
@@ -25,11 +24,11 @@ import Data.Singletons.Prelude.Num (PNum(..),SNum(..))
 import Data.Singletons.Prelude.Eq (PEq(..),SEq(..))
 import Data.Singletons.Prelude.Ord (POrd(..),SOrd(..))
 
+import Data.Viewable (Viewable(..))
+
 data Nat = Z | S Nat
 
 newtype instance Sing (n :: Nat) = SNat Int
-
-type SNat (n :: Nat) = Sing n
 
 instance Show (Sing (n :: Nat)) where
   show (SNat n) = show n
@@ -60,6 +59,14 @@ instance SingKind Nat where
   type DemoteRep Nat = Word
   fromSing (SNat n) = fromIntegral n
   toSing n = SomeSing (SNat (fromIntegral n))
+
+instance Viewable Nat where
+  data View (a :: Nat) where
+    Zero :: View Z
+    Succ :: Sing n -> View (S n)
+  view (SNat x)
+    | x == 0    = unsafeCoerce Zero
+    | otherwise = unsafeCoerce (Succ (SNat (x - 1)))
 
 type family (n :: Nat) + (m :: Nat) :: Nat where
   Z + m = m
@@ -172,8 +179,6 @@ instance Show (Bound n) where
   show (Bound i) = show i
 
 newtype instance Sing (f :: Fin n) = SFin Int
-
-type SFin (f :: Fin n) = Sing f
 
 instance Show (Sing (f :: Fin n)) where
   show (SFin i) = show i
