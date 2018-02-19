@@ -85,14 +85,14 @@ type family SignumNat (n :: Nat) :: Nat where
   SignumNat Z = Z
   SignumNat (S n) = S Z
 
-instance PNum ('Proxy :: Proxy Nat) where
-  type n :+ m = n + m
-  type n :- m = n - m
-  type n :* m = n * m
-  type Negate n = Error "Cannot Negate a Natural Number"
-  type Abs n = n
-  type Signum n = SignumNat n
-  type FromInteger n = Lit n
+--instance PNum ('Proxy :: Proxy Nat) where
+--  type n :+ m = n + m
+--  type n :- m = n - m
+--  type n :* m = n * m
+--  type Negate n = Error "Cannot Negate a Natural Number"
+--  type Abs n = n
+--  type Signum n = SignumNat n
+--  type FromInteger n = Lit n
 
 instance SNum Nat where
   (SNat n) %:+ (SNat m) = SNat (n + m)
@@ -119,9 +119,9 @@ type family NotEqualsNat (n :: Nat) (m :: Nat) :: Bool where
   NotEqualsNat Z (S m) = True
   NotEqualsNat (S n) (S m) = NotEqualsNat n m
 
-instance PEq ('Proxy :: Proxy Nat) where
-  type n :== m = EqualsNat n m
-  type n :/= m = NotEqualsNat n m
+--instance PEq ('Proxy :: Proxy Nat) where
+--  type n :== m = EqualsNat n m
+--  type n :/= m = NotEqualsNat n m
 
 instance SEq Nat where
   (SNat n) %:== (SNat m)
@@ -147,10 +147,10 @@ type family MaxNat (n :: Nat) (m :: Nat) :: Nat where
   MaxNat (S n) Z = S n
   MaxNat (S n) (S m) = S (MaxNat n m)
 
-instance POrd ('Proxy :: Proxy Nat) where
-  type Compare n m = Cmp n m
-  type Min n m = MinNat n m
-  type Max n m = MaxNat n m
+--instance POrd ('Proxy :: Proxy Nat) where
+--  type Compare n m = Cmp n m
+--  type Min n m = MinNat n m
+--  type Max n m = MaxNat n m
 
 instance SOrd Nat where
   sCompare (SNat n) (SNat m) = case compare n m of
