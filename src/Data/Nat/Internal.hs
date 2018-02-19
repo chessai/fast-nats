@@ -56,7 +56,7 @@ instance GHC.KnownNat (ToLit (S n)) => SingI (S n) where
   sing = (SNat . fromIntegral . GHC.natVal) (Proxy @(ToLit (S n)))
 
 instance SingKind Nat where
-  type DemoteRep Nat = Word
+  --type DemoteRep Nat = Word
   fromSing (SNat n) = fromIntegral n
   toSing n = SomeSing (SNat (fromIntegral n))
 
@@ -189,6 +189,6 @@ instance SDecide (Fin n) where
     | otherwise = Disproved (\Refl -> error "Data.Singletons.SDecide (Fin n): Integer equality failed.")
 
 instance SingKind (Fin n) where
-  type DemoteRep (Fin n) = Bound n
+  --type DemoteRep (Fin n) = Bound n
   fromSing (SFin i) = Bound i
   toSing (Bound i) = SomeSing (SFin i)
